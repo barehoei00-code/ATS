@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#081009">
+<title>ATS v0.4 同步控制版</title>
+<style>
+:root{--bg:#081009;--panel:#111b14;--panel2:#17231a;--text:#f5f7f5;--muted:#9eaaa0;--accent:#8caf82;--danger:#d95d5d;--warn:#d6a84f;--line:#2b3b2e}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+main{max-width:600px;margin:auto;padding:18px 18px calc(28px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;position:sticky;top:0;background:rgba(8,16,9,.94);backdrop-filter:blur(10px);z-index:10;padding:10px 0}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:54px;height:54px;border:3px solid var(--accent);border-radius:15px;display:grid;place-items:center;font-weight:900;font-size:20px}
+h1{font-size:24px;margin:0}.sub{font-size:12px;color:var(--muted);margin-top:3px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:14px}
+.hero h2{font-size:32px;margin:8px 0}.hero p{color:var(--muted);line-height:1.65}.eyebrow{color:var(--accent);font-weight:900;font-size:13px;letter-spacing:.08em}
+.stack{display:grid;gap:12px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button,input,select{font:inherit}.btn{min-height:62px;border-radius:16px;border:1px solid var(--line);font-size:20px;font-weight:900;padding:12px 16px}
+.primary{background:var(--accent);color:#061007;border-color:transparent}.secondary{background:var(--panel2);color:var(--text)}.danger{background:var(--danger);color:white;border-color:transparent}.warning{background:var(--warn);color:#171006;border-color:transparent}.small{min-height:42px;font-size:14px;border-radius:11px;padding:7px 10px}
+.field{display:grid;gap:7px;margin-bottom:14px}.field label{color:var(--muted);font-size:14px}.field input,.field select{width:100%;padding:15px;border-radius:13px;border:1px solid var(--line);background:#0b120d;color:var(--text);font-size:18px}
+.screen{display:none}.screen.active{display:block}.roomcode{text-align:center;font-size:48px;font-weight:950;letter-spacing:.12em;color:var(--accent);margin:10px 0}
+.status{display:flex;justify-content:space-between;align-items:center;gap:10px}.badge{padding:8px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:14px;font-weight:900}
+.list{display:grid;gap:10px}.player{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:13px;border-radius:14px;background:#0c140e;border:1px solid var(--line)}
+.player small{display:block;color:var(--muted);margin-top:4px}.player-controls{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.timer{text-align:center;font-size:62px;font-weight:950;margin:12px 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}.action{min-height:116px;border-radius:18px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:20px;font-weight:950}.action span{display:block;font-size:34px;margin-bottom:8px}
+.hidden{display:none!important}.note{text-align:center;color:#6f7b72;font-size:12px;margin:18px 0}.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#f3f5f3;color:#111;padding:12px 16px;border-radius:12px;font-weight:900;display:none;z-index:30;max-width:88%}.toast.show{display:block}
+.sos{border-color:#c87552;background:#3a2118}.dead{opacity:.74}.live-dot{color:#35d04f}.dead-dot{color:#ef4949}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="brand"><div class="logo">ATS</div><div><h1>真人 CS 戰術系統</h1><div class="sub">Firebase 即時連線版 v0.4</div></div></div>
+<button class="btn secondary small" onclick="go('home')">首頁</button>
+</header>
+
+<section id="home" class="screen active">
+<div class="card hero"><div class="eyebrow">ATS ONLINE</div><h2>多人即時連線</h2><p>房間、玩家、開始遊戲、倒數、陣亡、復活及 SOS，皆透過 Firebase 即時同步。</p></div>
+<div class="stack"><button class="btn primary" onclick="go('create')">建立房間</button><button class="btn secondary" onclick="go('join')">加入房間</button></div>
+<p id="loginState" class="note">正在連線 Firebase…</p>
+</section>
+
+<section id="create" class="screen">
+<div class="card"><h2>建立房間</h2>
+<div class="field"><label>裁判名稱</label><input id="hostName" maxlength="20" placeholder="例如：裁判"></div>
+<div class="field"><label>場次名稱</label><input id="gameName" maxlength="30" value="今晚對戰"></div>
+<div class="field"><label>遊戲時間（分鐘）</label><select id="minutes"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div>
+<button class="btn primary" style="width:100%" onclick="createRoom()">產生房號</button></div>
+</section>
+
+<section id="join" class="screen">
+<div class="card"><h2>加入房間</h2>
+<div class="field"><label>六位房號</label><input id="joinCode" inputmode="numeric" maxlength="6" placeholder="例如：726531"></div>
+<div class="field"><label>玩家名稱</label><input id="joinName" maxlength="20" placeholder="輸入名稱"></div>
+<div class="field"><label>隊伍</label><select id="joinTeam"><option>紅隊</option><option>藍隊</option></select></div>
+<button class="btn primary" style="width:100%" onclick="joinRoom()">加入</button></div>
+</section>
+
+<section id="lobby" class="screen">
+<div class="card">
+<div class="status"><span class="badge" id="lobbyStatus">等待中</span><strong id="lobbyGame">今晚對戰</strong></div>
+<div class="roomcode" id="lobbyCode">000000</div><p class="note">分享房號給其他玩家</p></div>
+<div class="card"><div class="status"><strong>玩家名單</strong><span id="count">0 人</span></div><div id="players" class="list" style="margin-top:12px"></div></div>
+<div id="hostControls" class="stack hidden"><button id="startBtn" class="btn primary" onclick="startGame()">開始遊戲</button><div id="liveControls" class="grid2 hidden"><button id="pauseBtn" class="btn warning" onclick="pauseGame()">暫停</button><button id="resumeBtn" class="btn blue hidden" onclick="resumeGame()">繼續</button><button class="btn danger" onclick="finishGame()">結束遊戲</button></div><button class="btn secondary" onclick="endGame()">關閉房間</button></div>
+</section>
+
+<section id="game" class="screen">
+<div class="card"><div class="status"><span class="badge" id="aliveBadge">🟢 存活</span><strong id="gameTitle">今晚對戰</strong></div><div class="timer" id="timer">30:00</div><p class="note"><span id="gameTeam"></span>｜<span id="gamePlayer"></span></p></div>
+<div id="aliveActions" class="actions">
+<button class="action" onclick="toast('PTT 語音預定下一版加入')"><span>🎙️</span>PTT</button>
+<button class="action" onclick="markHit()" style="background:#3a1515"><span>💀</span>我已陣亡</button>
+<button class="action sos" onclick="sendSOS()"><span>🆘</span>呼叫裁判</button>
+<button class="action" onclick="toast('任務：殲滅敵隊')"><span>📋</span>任務</button>
+</div>
+<div id="deadCard" class="card hidden" style="text-align:center;padding:38px 18px"><div style="font-size:58px">💀</div><h2 style="font-size:36px">你已陣亡</h2><p class="note">等待裁判復活</p></div>
+</section>
+</main>
+<div id="toast" class="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+const firebaseConfig={apiKey:"AIzaSyACA7Igl-kD2-Pw6aUAY9mk9LW0ECPIwY0",authDomain:"ats-c0912.firebaseapp.com",projectId:"ats-c0912",storageBucket:"ats-c0912.firebasestorage.app",messagingSenderId:"293926592919",appId:"1:293926592919:web:f8ef3f5996c716e799a4d2"};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+let uid="",roomCode="",isHost=false,me={name:"",team:"",alive:true,sos:false},roomUnsub=null,playersUnsub=null,timerInt=null,roomData=null;
+
+window.go=id=>{document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');scrollTo(0,0)};
+window.toast=m=>{const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)};
+const makeCode=()=>String(Math.floor(100000+Math.random()*900000));
+const fmt=s=>{s=Math.max(0,s);return String(Math.floor(s/60)).padStart(2,'0')+":"+String(s%60).padStart(2,'0')};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+
+signInAnonymously(auth).catch(e=>toast("登入失敗："+e.message));
+onAuthStateChanged(auth,u=>{if(u){uid=u.uid;document.getElementById('loginState').textContent="Firebase 已連線，可開始使用"}});
+
+window.createRoom=async()=>{
+ if(!uid)return toast("請稍候連線");
+ const name=document.getElementById('hostName').value.trim()||"裁判";
+ const game=document.getElementById('gameName').value.trim()||"未命名場次";
+ const mins=Number(document.getElementById('minutes').value);
+ roomCode=makeCode();isHost=true;me={name,team:"裁判",alive:true,sos:false,role:"host"};
+ await setDoc(doc(db,"rooms",roomCode),{gameName:game,minutes:mins,status:"waiting",hostUid:uid,createdAt:serverTimestamp(),startedAt:null,remainingSec:mins*60});
+ await setDoc(doc(db,"rooms",roomCode,"players",uid),{...me,joinedAt:serverTimestamp()});
+ enterLobby();
+};
+
+window.joinRoom=async()=>{
+ if(!uid)return toast("請稍候連線");
+ const c=document.getElementById('joinCode').value.trim(),n=document.getElementById('joinName').value.trim(),team=document.getElementById('joinTeam').value;
+ if(c.length!==6)return toast("請輸入六位房號"); if(!n)return toast("請輸入玩家名稱");
+ const snap=await getDoc(doc(db,"rooms",c)); if(!snap.exists())return toast("找不到此房間");
+ roomCode=c;isHost=false;me={name:n,team,alive:true,sos:false,role:"player"};
+ await setDoc(doc(db,"rooms",c,"players",uid),{...me,joinedAt:serverTimestamp()});
+ enterLobby();
+};
+
+function enterLobby(){
+ document.getElementById('lobbyCode').textContent=roomCode;
+ document.getElementById('hostControls').classList.toggle('hidden',!isHost);go('lobby');
+ if(roomUnsub)roomUnsub();if(playersUnsub)playersUnsub();
+ roomUnsub=onSnapshot(doc(db,"rooms",roomCode),s=>{
+   if(!s.exists()){toast("房間已結束");go('home');return}
+   roomData=s.data();
+   document.getElementById('lobbyGame').textContent=roomData.gameName;
+   document.getElementById('lobbyStatus').textContent=roomData.status==="waiting"?"等待中":roomData.status==="running"?"進行中":"已結束";
+   document.getElementById("startBtn").classList.toggle("hidden",roomData.status!=="waiting");document.getElementById("liveControls").classList.toggle("hidden",!["running","paused"].includes(roomData.status));document.getElementById("pauseBtn").classList.toggle("hidden",roomData.status!=="running");document.getElementById("resumeBtn").classList.toggle("hidden",roomData.status!=="paused");if(["running","paused","finished"].includes(roomData.status))enterGame();
+ });
+ playersUnsub=onSnapshot(collection(db,"rooms",roomCode,"players"),q=>{
+   const box=document.getElementById('players');box.innerHTML="";document.getElementById('count').textContent=q.size+" 人";
+   q.forEach(d=>{
+     const p=d.data();const el=document.createElement('div');el.className="player"+(p.alive===false?" dead":"");
+     const sos=p.sos===true?"｜🆘 求援":"";
+     let controls="";
+     if(isHost && p.role!=="host"){
+       controls=`<div class="player-controls"><button class="btn small ${p.alive===false?'primary':'danger'}" data-id="${d.id}" data-action="${p.alive===false?'revive':'kill'}">${p.alive===false?'復活':'判定陣亡'}</button>${p.sos===true?`<button class="btn small warning" data-id="${d.id}" data-action="clearSOS">清除 SOS</button>`:""}</div>`;
+     }
+     el.innerHTML=`<div><strong>${esc(p.name)}</strong><small>${esc(p.team)}｜${p.alive===false?'<span class="dead-dot">🔴 陣亡</span>':'<span class="live-dot">🟢 存活</span>'}${sos}</small></div>${controls}`;
+     box.appendChild(el);
+     if(d.id===uid){me=p;syncAlive()}
+   });
+   box.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>judgeAction(b.dataset.id,b.dataset.action));
+ });
+}
+
+async function judgeAction(id,action){
+ if(!isHost)return;
+ const ref=doc(db,"rooms",roomCode,"players",id);
+ if(action==="revive")await updateDoc(ref,{alive:true,sos:false});
+ if(action==="kill")await updateDoc(ref,{alive:false,sos:false});
+ if(action==="clearSOS")await updateDoc(ref,{sos:false});
+}
+window.startGame=async()=>{if(!isHost)return;await updateDoc(doc(db,"rooms",roomCode),{status:"running",startedAt:Date.now(),remainingSec:Number(roomData.minutes||30)*60})};
+window.pauseGame=async()=>{if(!isHost||roomData.status!=="running")return;await updateDoc(doc(db,"rooms",roomCode),{status:"paused",remainingSec:calcRemaining()})};
+window.resumeGame=async()=>{if(!isHost||roomData.status!=="paused")return;await updateDoc(doc(db,"rooms",roomCode),{status:"running",startedAt:Date.now()})};
+window.finishGame=async()=>{if(!isHost)return;await updateDoc(doc(db,"rooms",roomCode),{status:"finished",remainingSec:calcRemaining()})};
+window.endGame=async()=>{if(!isHost)return;await deleteDoc(doc(db,"rooms",roomCode));go('home')};
+window.markHit=async()=>{if(roomCode)await updateDoc(doc(db,"rooms",roomCode,"players",uid),{alive:false,sos:false})};
+window.sendSOS=async()=>{if(roomCode){await updateDoc(doc(db,"rooms",roomCode,"players",uid),{sos:true});toast("已通知裁判")}};
+
+function calcRemaining(){const base=Number(roomData.remainingSec??Number(roomData.minutes||30)*60);if(roomData.status!=="running")return base;return Math.max(0,base-Math.floor((Date.now()-Number(roomData.startedAt||Date.now()))/1000))}
+function enterGame(){
+ go('game');document.getElementById('gameTitle').textContent=roomData.gameName;document.getElementById('gamePlayer').textContent=me.name;document.getElementById('gameTeam').textContent=me.team;syncAlive();
+ clearInterval(timerInt);timerInt=setInterval(()=>{const left=calcRemaining();document.getElementById('timer').textContent=fmt(left);if(left<=0&&isHost&&roomData.status==='running')finishGame()},1000);
+}
+function syncAlive(){const alive=me.alive!==false;const finished=roomData?.status==='finished';document.getElementById('aliveBadge').textContent=finished?'🏁 已結束':alive?'🟢 存活':'🔴 已陣亡';document.getElementById('aliveActions').classList.toggle('hidden',!alive||finished);document.getElementById('deadCard').classList.toggle('hidden',alive||finished)}
+</script>
+</body>
+</html>
