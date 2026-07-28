@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081009">
-<title>ATS v0.6.4 玩家自治版</title>
+<title>ATS v0.7 玩家自治版</title>
 <style>
 :root{--b:#081009;--p:#111b14;--p2:#17231a;--t:#f5f7f5;--m:#9eaaa0;--a:#8caf82;--d:#d95d5d;--w:#d6a84f;--bl:#587fc8;--l:#2b3b2e}
 *{box-sizing:border-box}
@@ -57,7 +57,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
       <div class="logo">ATS</div>
       <div>
         <h2 style="margin:0">真人 CS 戰術系統</h2>
-        <div class="sub">Alpha v0.6.4 玩家自治版</div>
+        <div class="sub">Alpha v0.7 玩家自治版</div>
       </div>
     </div>
     <button class="btn secondary small" id="homeBtn">首頁</button>
@@ -65,7 +65,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
 
   <section id="home" class="screen on">
     <div class="card">
-      <b style="color:var(--a)">ATS ALPHA v0.6.4</b>
+      <b style="color:var(--a)">ATS ALPHA v0.7</b>
       <h1>簡易實戰版</h1>
       <p class="muted">建立房間、加入對戰、紅藍隊統計、倒數計時、玩家自行回報陣亡。</p>
     </div>
@@ -152,13 +152,6 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
         <button id="renameBtn" class="btn secondary">修改房名</button>
       </div>
       <button id="startBtn" class="btn primary">開始遊戲</button>
-      <button id="rallyBtn" class="btn secondary">📢 一鍵集合</button>
-      <button id="restartBtn" class="btn primary">🔄 重新開始</button>
-      <div id="runBox" class="hide">
-        <button id="pauseBtn" class="btn warn">暫停</button>
-        <button id="resumeBtn" class="btn blue hide">繼續</button>
-        <button id="finishBtn" class="btn danger">結束遊戲</button>
-      </div>
       <button id="closeBtn" class="btn secondary">關閉房間</button>
     </div>
 
@@ -190,6 +183,15 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
     <div id="deadBox" class="card hide" style="text-align:center">
       <h1>💀 你已陣亡</h1>
       <p class="muted">仍可查看倒數與全場戰況。</p>
+    </div>
+
+    <div id="gameHostBox" class="card hide">
+      <h3>房主控制</h3>
+      <button id="rallyBtn" class="btn secondary">📢 一鍵集合</button>
+      <button id="pauseBtn" class="btn warn">⏸ 暫停</button>
+      <button id="resumeBtn" class="btn blue hide">▶️ 繼續</button>
+      <button id="restartBtn" class="btn primary">🔄 重新開始</button>
+      <button id="finishBtn" class="btn danger">🏁 結束遊戲</button>
     </div>
 
     <div id="endedBox" class="card hide">
@@ -371,10 +373,12 @@ function watchRoom(){
       room.status==="paused"?"已暫停":"已結束";
 
     $("startBtn").classList.toggle("hide",room.status!=="waiting");
-    $("runBox").classList.toggle("hide",!["running","paused"].includes(room.status));
+    $("gameHostBox").classList.toggle("hide",!isHost || !["running","paused","finished"].includes(room.status));
     $("pauseBtn").classList.toggle("hide",room.status!=="running");
     $("resumeBtn").classList.toggle("hide",room.status!=="paused");
-    $("restartBtn").classList.remove("hide");
+    $("restartBtn").classList.toggle("hide",!["running","paused","finished"].includes(room.status));
+    $("finishBtn").classList.toggle("hide",room.status==="finished");
+    $("rallyBtn").classList.toggle("hide",room.status==="finished");
 
     if(["running","paused","finished"].includes(room.status))enterGame();
   },e=>{
@@ -567,6 +571,7 @@ $("hitBtn").onclick=()=>guarded("陣亡回報",async()=>{
 $("backLobbyBtn").onclick=()=>show("lobby");
 
 function enterGame(){
+  $("gameHostBox").classList.toggle("hide",!isHost);
   $("gameTitle").textContent=room.title||"";
   $("teamText").textContent=me.team||"";
   $("playerName").textContent=me.name||"";
