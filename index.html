@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081009">
-<title>ATS v0.6.2 玩家自治版</title>
+<title>ATS v0.6.4 玩家自治版</title>
 <style>
 :root{--b:#081009;--p:#111b14;--p2:#17231a;--t:#f5f7f5;--m:#9eaaa0;--a:#8caf82;--d:#d95d5d;--w:#d6a84f;--bl:#587fc8;--l:#2b3b2e}
 *{box-sizing:border-box}
@@ -57,7 +57,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
       <div class="logo">ATS</div>
       <div>
         <h2 style="margin:0">真人 CS 戰術系統</h2>
-        <div class="sub">Alpha v0.6.2 玩家自治版</div>
+        <div class="sub">Alpha v0.6.4 玩家自治版</div>
       </div>
     </div>
     <button class="btn secondary small" id="homeBtn">首頁</button>
@@ -65,7 +65,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
 
   <section id="home" class="screen on">
     <div class="card">
-      <b style="color:var(--a)">ATS ALPHA v0.6.2</b>
+      <b style="color:var(--a)">ATS ALPHA v0.6.4</b>
       <h1>簡易實戰版</h1>
       <p class="muted">建立房間、加入對戰、紅藍隊統計、倒數計時、玩家自行回報陣亡。</p>
     </div>
@@ -152,13 +152,13 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
         <button id="renameBtn" class="btn secondary">修改房名</button>
       </div>
       <button id="startBtn" class="btn primary">開始遊戲</button>
+      <button id="rallyBtn" class="btn secondary">📢 一鍵集合</button>
+      <button id="restartBtn" class="btn primary">🔄 重新開始</button>
       <div id="runBox" class="hide">
         <button id="pauseBtn" class="btn warn">暫停</button>
         <button id="resumeBtn" class="btn blue hide">繼續</button>
-        <button id="rallyBtn" class="btn secondary">📢 一鍵集合</button>
         <button id="finishBtn" class="btn danger">結束遊戲</button>
       </div>
-      <button id="restartBtn" class="btn primary hide">🔄 重新開始</button>
       <button id="closeBtn" class="btn secondary">關閉房間</button>
     </div>
 
@@ -215,7 +215,7 @@ const $=id=>document.getElementById(id);
 let uid="",code="",isHost=false,me={},room={},timerInt=null;
 let roomUnsub=null,playersUnsub=null,logsUnsub=null;
 let counts={ra:0,rd:0,ba:0,bd:0};
-let lastSosSeen=0,lastSosSent=0;
+let lastSosSeen=0,lastSosSent=0,pendingSos=null;
 
 const show=id=>{
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));
@@ -352,12 +352,8 @@ function watchRoom(){
     }
 
     if(room.sos && Number(room.sos.at)>lastSosSeen){
-      lastSosSeen=Number(room.sos.at);
-      if(room.sos.uid!==uid && room.sos.team===me.team && Date.now()-Number(room.sos.at)<15000){
-        $("sosAlert").textContent="🆘 "+room.sos.name+" 發出 SOS！";
-        $("sosAlert").classList.add("on");
-        setTimeout(()=>$("sosAlert").classList.remove("on"),8000);
-      }
+      pendingSos=room.sos;
+      tryShowSos();
     }
 
     if(room.rally && Number(room.rally.at)>Number(window._lastRallySeen||0)){
@@ -378,7 +374,7 @@ function watchRoom(){
     $("runBox").classList.toggle("hide",!["running","paused"].includes(room.status));
     $("pauseBtn").classList.toggle("hide",room.status!=="running");
     $("resumeBtn").classList.toggle("hide",room.status!=="paused");
-    $("restartBtn").classList.toggle("hide",room.status==="waiting");
+    $("restartBtn").classList.remove("hide");
 
     if(["running","paused","finished"].includes(room.status))enterGame();
   },e=>{
@@ -405,6 +401,7 @@ function watchRoom(){
       if(d.id===uid){
         me=p;
         syncMe();
+        tryShowSos();
       }
     });
 
@@ -427,6 +424,28 @@ function watchRoom(){
     },
     e=>console.error(e)
   );
+}
+
+function tryShowSos(){
+  if(!pendingSos || !me || !me.team)return;
+  const sos=pendingSos;
+  if(Number(sos.at)<=lastSosSeen)return;
+  if(Date.now()-Number(sos.at)>20000){
+    lastSosSeen=Number(sos.at);
+    pendingSos=null;
+    return;
+  }
+  if(sos.uid!==uid && sos.team===me.team){
+    lastSosSeen=Number(sos.at);
+    pendingSos=null;
+    $("sosAlert").textContent="🆘 "+sos.name+" 發出 SOS！";
+    $("sosAlert").classList.add("on");
+    if(navigator.vibrate) navigator.vibrate([250,120,250]);
+    setTimeout(()=>$("sosAlert").classList.remove("on"),8000);
+  }else if(sos.uid===uid || sos.team!==me.team){
+    lastSosSeen=Number(sos.at);
+    pendingSos=null;
+  }
 }
 
 function updateCounts(){
@@ -531,7 +550,8 @@ $("sosBtn").onclick=()=>guarded("SOS",async()=>{
   await updateDoc(doc(db,"rooms",code),{
     sos:{uid,name:me.name,team:me.team,at:now}
   });
-  note("SOS 已提醒隊友");
+  await addLog(me.name+" 向 "+me.team+" 發出 SOS");
+  note("SOS 已提醒同隊隊友");
 });
 
 $("hitBtn").onclick=()=>guarded("陣亡回報",async()=>{
