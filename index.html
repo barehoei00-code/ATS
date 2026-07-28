@@ -1,20 +1,516 @@
-<!doctype html><html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081009"><title>ATS v0.5 Alpha</title><style>
-:root{--b:#081009;--p:#111b14;--p2:#17231a;--t:#f5f7f5;--m:#9eaaa0;--a:#8caf82;--d:#d95d5d;--w:#d6a84f;--bl:#587fc8;--l:#2b3b2e}*{box-sizing:border-box}html,body{margin:0;background:var(--b);color:var(--t);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif}main{max-width:640px;margin:auto;padding:18px}.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.brand{display:flex;gap:12px;align-items:center}.logo{width:56px;height:56px;border:3px solid var(--a);border-radius:16px;display:grid;place-items:center;font-weight:900}.sub,.muted{color:var(--m)}.card{background:var(--p);border:1px solid var(--l);border-radius:20px;padding:18px;margin-bottom:14px}.screen{display:none}.screen.on{display:block}.btn{width:100%;min-height:62px;border:0;border-radius:16px;font-size:20px;font-weight:900;padding:12px;margin-bottom:12px}.primary{background:var(--a);color:#061007}.secondary{background:var(--p2);color:white;border:1px solid var(--l)}.danger{background:var(--d);color:white}.warn{background:var(--w)}.blue{background:var(--bl);color:white}.small{width:auto;min-height:38px;font-size:13px;padding:7px 9px;margin:0}.field{margin-bottom:14px}.field label{display:block;color:var(--m);margin-bottom:7px}.field input,.field select{width:100%;padding:15px;border-radius:13px;border:1px solid var(--l);background:#0b120d;color:white;font-size:18px}.code{text-align:center;font-size:50px;font-weight:950;letter-spacing:.12em;color:var(--a)}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.players{display:grid;gap:10px}.player{padding:13px;border:1px solid var(--l);border-radius:14px;background:#0c140e}.controls{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{padding:14px;border:1px solid var(--l);border-radius:14px}.timer{text-align:center;font-size:62px;font-weight:950}.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}.act{min-height:118px;border-radius:18px;border:1px solid var(--l);background:var(--p);color:white;font-size:20px;font-weight:900}.act span{display:block;font-size:34px}.hide{display:none!important}.log{max-height:220px;overflow:auto}.log div{padding:8px;border-bottom:1px solid var(--l);color:var(--m);font-size:13px}.toast{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:white;color:#111;padding:12px 16px;border-radius:12px;display:none}.toast.on{display:block}
-</style></head><body><main><div class="head"><div class="brand"><div class="logo">ATS</div><div><h2 style="margin:0">真人 CS 戰術系統</h2><div class="sub">Alpha v0.5</div></div></div><button class="btn secondary small" onclick="show('home')">首頁</button></div>
-<section id="home" class="screen on"><div class="card"><b style="color:var(--a)">ATS ALPHA v0.5</b><h1>實戰測試版</h1><p class="muted">隊伍統計、裁判調隊、踢除玩家、事件紀錄及同場再開。</p></div><button class="btn primary" onclick="show('create')">建立房間</button><button class="btn secondary" onclick="show('join')">加入房間</button><p id="login" class="muted" style="text-align:center">正在連線 Firebase…</p></section>
-<section id="create" class="screen"><div class="card"><h2>建立房間</h2><div class="field"><label>裁判名稱</label><input id="hostName" placeholder="裁判"></div><div class="field"><label>場次名稱</label><input id="gameName" value="今晚對戰"></div><div class="field"><label>遊戲時間</label><select id="mins"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div><button class="btn primary" onclick="createRoom()">產生房號</button></div></section>
-<section id="join" class="screen"><div class="card"><h2>加入房間</h2><div class="field"><label>六位房號</label><input id="joinCode" maxlength="6" inputmode="numeric"></div><div class="field"><label>玩家名稱</label><input id="joinName"></div><div class="field"><label>隊伍</label><select id="joinTeam"><option>紅隊</option><option>藍隊</option></select></div><button class="btn primary" onclick="joinRoom()">加入</button></div></section>
-<section id="lobby" class="screen"><div class="card"><div class="row"><b id="status">等待中</b><b id="title">今晚對戰</b></div><div class="code" id="roomCode">000000</div></div><div class="card"><div class="row"><h3>即時戰況</h3><span id="total">0 人</span></div><div class="stats"><div class="stat"><b>紅隊</b><div>存活 <span id="ra">0</span>｜陣亡 <span id="rd">0</span></div></div><div class="stat"><b>藍隊</b><div>存活 <span id="ba">0</span>｜陣亡 <span id="bd">0</span></div></div></div></div><div class="card"><h3>玩家名單</h3><div id="players" class="players"></div></div><div id="hostBox" class="hide"><button id="start" class="btn primary" onclick="startGame()">開始遊戲</button><div id="runBox" class="hide"><button id="pause" class="btn warn" onclick="pauseGame()">暫停</button><button id="resume" class="btn blue hide" onclick="resumeGame()">繼續</button><button class="btn danger" onclick="finishGame()">結束遊戲</button></div><button id="restart" class="btn primary hide" onclick="restartGame()">同場再開</button><button class="btn secondary" onclick="closeRoom()">關閉房間</button></div><div class="card"><h3>事件紀錄</h3><div id="logs" class="log"></div></div></section>
-<section id="game" class="screen"><div class="card"><div class="row"><b id="alive">🟢 存活</b><b id="gameTitle"></b></div><div class="timer" id="timer">30:00</div><p class="muted" style="text-align:center"><span id="team"></span>｜<span id="playerName"></span></p></div><div id="acts" class="actions"><button class="act" onclick="note('PTT 預留下一版')"><span>🎙️</span>PTT</button><button class="act" onclick="hit()"><span>💀</span>我已陣亡</button><button class="act" onclick="sos()"><span>🆘</span>呼叫裁判</button><button class="act" onclick="note('任務：殲滅敵隊')"><span>📋</span>任務</button></div><div id="dead" class="card hide" style="text-align:center"><h1>💀 你已陣亡</h1><p class="muted">等待裁判復活</p></div><div id="ended" class="card hide" style="text-align:center"><h1>🏁 遊戲結束</h1></div></section></main><div id="toast" class="toast"></div>
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#081009">
+<title>ATS v0.6 玩家自治版</title>
+<style>
+:root{--b:#081009;--p:#111b14;--p2:#17231a;--t:#f5f7f5;--m:#9eaaa0;--a:#8caf82;--d:#d95d5d;--w:#d6a84f;--bl:#587fc8;--l:#2b3b2e}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--b);color:var(--t);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif}
+button,input,select{font:inherit}
+main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:56px;height:56px;border:3px solid var(--a);border-radius:16px;display:grid;place-items:center;font-weight:900}
+.sub,.muted{color:var(--m)}
+.card{background:var(--p);border:1px solid var(--l);border-radius:20px;padding:18px;margin-bottom:14px}
+.screen{display:none}.screen.on{display:block}
+.btn{width:100%;min-height:62px;border:0;border-radius:16px;font-size:20px;font-weight:900;padding:12px;margin-bottom:12px;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--a);color:#061007}
+.secondary{background:var(--p2);color:white;border:1px solid var(--l)}
+.danger{background:var(--d);color:white}
+.warn{background:var(--w);color:#171000}
+.blue{background:var(--bl);color:white}
+.small{width:auto;min-height:38px;font-size:13px;padding:7px 10px;margin:0}
+.field{margin-bottom:14px}
+.field label{display:block;color:var(--m);margin-bottom:7px}
+.field input,.field select{width:100%;padding:15px;border-radius:13px;border:1px solid var(--l);background:#0b120d;color:white;font-size:18px}
+.code{text-align:center;font-size:50px;font-weight:950;letter-spacing:.12em;color:var(--a);word-break:break-all}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.players{display:grid;gap:10px}
+.player{padding:13px;border:1px solid var(--l);border-radius:14px;background:#0c140e}
+.player.me{border-color:var(--a)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{padding:14px;border:1px solid var(--l);border-radius:14px}
+.timer{text-align:center;font-size:62px;font-weight:950}
+.actions{display:grid;grid-template-columns:1fr;gap:12px}
+.act{min-height:118px;border-radius:18px;border:1px solid var(--l);background:var(--p);color:white;font-size:22px;font-weight:900}
+.act span{display:block;font-size:38px}
+.hide{display:none!important}
+.log{max-height:220px;overflow:auto}
+.log div{padding:8px;border-bottom:1px solid var(--l);color:var(--m);font-size:13px}
+.toast{position:fixed;z-index:99;bottom:25px;left:50%;transform:translateX(-50%);background:white;color:#111;padding:12px 16px;border-radius:12px;display:none;max-width:90%;text-align:center}
+.toast.on{display:block}
+.result{text-align:center;font-size:28px;font-weight:900;color:var(--a)}
+@media(max-width:380px){.timer{font-size:52px}.code{font-size:42px}.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <div class="head">
+    <div class="brand">
+      <div class="logo">ATS</div>
+      <div>
+        <h2 style="margin:0">真人 CS 戰術系統</h2>
+        <div class="sub">Alpha v0.6 玩家自治版</div>
+      </div>
+    </div>
+    <button class="btn secondary small" id="homeBtn">首頁</button>
+  </div>
+
+  <section id="home" class="screen on">
+    <div class="card">
+      <b style="color:var(--a)">ATS ALPHA v0.6</b>
+      <h1>簡易實戰版</h1>
+      <p class="muted">建立房間、加入對戰、紅藍隊統計、倒數計時、玩家自行回報陣亡。</p>
+    </div>
+    <button class="btn primary" id="goCreate">建立房間</button>
+    <button class="btn secondary" id="goJoin">加入房間</button>
+    <p id="login" class="muted" style="text-align:center">正在連線 Firebase…</p>
+  </section>
+
+  <section id="create" class="screen">
+    <div class="card">
+      <h2>建立房間</h2>
+      <div class="field">
+        <label>房主名稱</label>
+        <input id="hostName" maxlength="20" placeholder="請輸入名稱">
+      </div>
+      <div class="field">
+        <label>房主隊伍</label>
+        <select id="hostTeam"><option>紅隊</option><option>藍隊</option></select>
+      </div>
+      <div class="field">
+        <label>房間名稱</label>
+        <input id="gameName" maxlength="30" value="今晚對戰">
+      </div>
+      <div class="field">
+        <label>遊戲時間</label>
+        <select id="mins">
+          <option value="5">5 分鐘</option>
+          <option value="10">10 分鐘</option>
+          <option value="15" selected>15 分鐘</option>
+          <option value="20">20 分鐘</option>
+          <option value="25">25 分鐘</option>
+          <option value="30">30 分鐘</option>
+        </select>
+      </div>
+      <button class="btn primary" id="createBtn">建立房間</button>
+    </div>
+  </section>
+
+  <section id="join" class="screen">
+    <div class="card">
+      <h2>加入房間</h2>
+      <div class="field">
+        <label>六位房號</label>
+        <input id="joinCode" maxlength="6" inputmode="numeric" placeholder="例如 123456">
+      </div>
+      <div class="field">
+        <label>玩家名稱</label>
+        <input id="joinName" maxlength="20" placeholder="請輸入名稱">
+      </div>
+      <div class="field">
+        <label>隊伍</label>
+        <select id="joinTeam"><option>紅隊</option><option>藍隊</option></select>
+      </div>
+      <button class="btn primary" id="joinBtn">加入</button>
+    </div>
+  </section>
+
+  <section id="lobby" class="screen">
+    <div class="card">
+      <div class="row"><b id="status">等待中</b><b id="title">今晚對戰</b></div>
+      <div class="code" id="roomCode">000000</div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h3>即時戰況</h3><span id="total">0 人</span></div>
+      <div class="stats">
+        <div class="stat"><b>紅隊</b><div>存活 <span id="ra">0</span>｜陣亡 <span id="rd">0</span></div></div>
+        <div class="stat"><b>藍隊</b><div>存活 <span id="ba">0</span>｜陣亡 <span id="bd">0</span></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>玩家名單</h3>
+      <div id="players" class="players"></div>
+    </div>
+
+    <div id="hostBox" class="hide">
+      <button id="startBtn" class="btn primary">開始遊戲</button>
+      <div id="runBox" class="hide">
+        <button id="pauseBtn" class="btn warn">暫停</button>
+        <button id="resumeBtn" class="btn blue hide">繼續</button>
+        <button id="finishBtn" class="btn danger">結束遊戲</button>
+      </div>
+      <button id="restartBtn" class="btn primary hide">同場再開</button>
+      <button id="closeBtn" class="btn secondary">關閉房間</button>
+    </div>
+
+    <div class="card">
+      <h3>事件紀錄</h3>
+      <div id="logs" class="log"></div>
+    </div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="card">
+      <div class="row"><b id="aliveState">🟢 存活</b><b id="gameTitle"></b></div>
+      <div class="timer" id="timer">15:00</div>
+      <p class="muted" style="text-align:center"><span id="teamText"></span>｜<span id="playerName"></span></p>
+    </div>
+
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><b>紅隊</b><div>存活 <span id="gra">0</span>｜陣亡 <span id="grd">0</span></div></div>
+        <div class="stat"><b>藍隊</b><div>存活 <span id="gba">0</span>｜陣亡 <span id="gbd">0</span></div></div>
+      </div>
+    </div>
+
+    <div id="aliveActions" class="actions">
+      <button class="act" id="hitBtn"><span>💀</span>我已陣亡</button>
+    </div>
+
+    <div id="deadBox" class="card hide" style="text-align:center">
+      <h1>💀 你已陣亡</h1>
+      <p class="muted">仍可查看倒數與全場戰況。</p>
+    </div>
+
+    <div id="endedBox" class="card hide">
+      <h1 style="text-align:center">🏁 遊戲結束</h1>
+      <div id="result" class="result">統計中</div>
+      <button class="btn secondary" id="backLobbyBtn" style="margin-top:18px">返回房間</button>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";import{getAuth,signInAnonymously,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";import{getFirestore,doc,setDoc,getDoc,updateDoc,onSnapshot,collection,serverTimestamp,deleteDoc,addDoc,query,orderBy,limit,getDocs}from"https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-const cfg={apiKey:"AIzaSyACA7Igl-kD2-Pw6aUAY9mk9LW0ECPIwY0",authDomain:"ats-c0912.firebaseapp.com",projectId:"ats-c0912",storageBucket:"ats-c0912.firebasestorage.app",messagingSenderId:"293926592919",appId:"1:293926592919:web:f8ef3f5996c716e799a4d2"};const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);let uid="",code="",host=false,me={},room={},timerInt;
-window.show=id=>{document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');scrollTo(0,0)};window.note=m=>{toast.textContent=m;toast.classList.add('on');setTimeout(()=>toast.classList.remove('on'),1800)};const log=async t=>addDoc(collection(db,"rooms",code,"logs"),{t,at:Date.now()});const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');const left=()=>room.status==='running'?Math.max(0,(room.remaining||room.duration)-Math.floor((Date.now()-room.started)/1000)):(room.remaining||room.duration);
-signInAnonymously(auth);onAuthStateChanged(auth,u=>{if(u){uid=u.uid;login.textContent='Firebase 已連線，可開始使用'}});
-window.createRoom=async()=>{code=String(Math.floor(100000+Math.random()*900000));host=true;me={name:hostName.value||'裁判',team:'裁判',alive:true,sos:false,role:'host'};let duration=Number(mins.value)*60;await setDoc(doc(db,'rooms',code),{title:gameName.value||'今晚對戰',status:'waiting',duration,remaining:duration,started:null,host:uid});await setDoc(doc(db,'rooms',code,'players',uid),me);await log(me.name+' 建立房間');watch()};
-window.joinRoom=async()=>{let c=joinCode.value.trim();if(c.length!==6||!joinName.value.trim())return note('請輸入房號與名稱');let s=await getDoc(doc(db,'rooms',c));if(!s.exists())return note('找不到房間');code=c;host=false;me={name:joinName.value.trim(),team:joinTeam.value,alive:true,sos:false,role:'player'};await setDoc(doc(db,'rooms',code,'players',uid),me);await log(me.name+' 加入 '+me.team);watch()};
-function watch(){roomCode.textContent=code;hostBox.classList.toggle('hide',!host);show('lobby');onSnapshot(doc(db,'rooms',code),s=>{if(!s.exists())return show('home');room=s.data();title.textContent=room.title;status.textContent=room.status==='waiting'?'等待中':room.status==='running'?'進行中':room.status==='paused'?'已暫停':'已結束';start.classList.toggle('hide',room.status!=='waiting');runBox.classList.toggle('hide',!['running','paused'].includes(room.status));pause.classList.toggle('hide',room.status!=='running');resume.classList.toggle('hide',room.status!=='paused');restart.classList.toggle('hide',room.status!=='finished');if(['running','paused','finished'].includes(room.status))enterGame()});onSnapshot(collection(db,'rooms',code,'players'),q=>{players.innerHTML='';let R=[0,0],B=[0,0];total.textContent=q.size+' 人';q.forEach(d=>{let p=d.data();if(p.role!=='host'){let a=p.alive?0:1;(p.team==='紅隊'?R:B)[a]++}let x=document.createElement('div');x.className='player';x.innerHTML=`<b>${p.name}</b><div class="muted">${p.team}｜${p.alive?'🟢 存活':'🔴 陣亡'}${p.sos?'｜🆘':''}</div>`;if(host&&p.role!=='host'){let c=document.createElement('div');c.className='controls';[['kill',p.alive?'判定陣亡':'復活'],['switch',p.team==='紅隊'?'轉藍隊':'轉紅隊'],['kick','踢除']].forEach(([a,t])=>{let b=document.createElement('button');b.className='btn small '+(a==='kill'?'danger':a==='switch'?'blue':'secondary');b.textContent=t;b.onclick=()=>judge(d.id,a,p);c.appendChild(b)});x.appendChild(c)}players.appendChild(x);if(d.id===uid){me=p;syncMe()}});ra.textContent=R[0];rd.textContent=R[1];ba.textContent=B[0];bd.textContent=B[1]});onSnapshot(query(collection(db,'rooms',code,'logs'),orderBy('at','desc'),limit(30)),q=>{logs.innerHTML='';q.forEach(d=>{let x=document.createElement('div');x.textContent=new Date(d.data().at).toLocaleTimeString('zh-TW',{hour12:false})+'　'+d.data().t;logs.appendChild(x)})})}
-async function judge(id,a,p){let r=doc(db,'rooms',code,'players',id);if(a==='kill'){await updateDoc(r,{alive:!p.alive,sos:false});await log('裁判'+(p.alive?'判定 ':'復活 ')+p.name)}if(a==='switch'){let t=p.team==='紅隊'?'藍隊':'紅隊';await updateDoc(r,{team:t});await log('裁判將 '+p.name+' 調至 '+t)}if(a==='kick'&&confirm('踢除 '+p.name+'？')){await deleteDoc(r);await log('裁判踢除 '+p.name)}}
-window.startGame=async()=>{await updateDoc(doc(db,'rooms',code),{status:'running',started:Date.now(),remaining:room.duration});await log('遊戲開始')};window.pauseGame=async()=>{await updateDoc(doc(db,'rooms',code),{status:'paused',remaining:left()});await log('遊戲暫停')};window.resumeGame=async()=>{await updateDoc(doc(db,'rooms',code),{status:'running',started:Date.now()});await log('遊戲繼續')};window.finishGame=async()=>{await updateDoc(doc(db,'rooms',code),{status:'finished',remaining:left()});await log('遊戲結束')};window.restartGame=async()=>{let q=await getDocs(collection(db,'rooms',code,'players'));for(let d of q.docs)await updateDoc(d.ref,{alive:true,sos:false});await updateDoc(doc(db,'rooms',code),{status:'waiting',remaining:room.duration,started:null});await log('同場再開')};window.closeRoom=async()=>{if(confirm('確定關閉房間？'))await deleteDoc(doc(db,'rooms',code))};window.hit=async()=>{await updateDoc(doc(db,'rooms',code,'players',uid),{alive:false,sos:false});await log(me.name+' 陣亡')};window.sos=async()=>{await updateDoc(doc(db,'rooms',code,'players',uid),{sos:true});await log(me.name+' 呼叫裁判');note('已通知裁判')};
-function enterGame(){show('game');gameTitle.textContent=room.title;team.textContent=me.team||'';playerName.textContent=me.name||'';clearInterval(timerInt);timerInt=setInterval(()=>{timer.textContent=fmt(left());if(host&&room.status==='running'&&left()<=0)finishGame()},1000);syncMe()}function syncMe(){let endedGame=room.status==='finished';alive.textContent=me.alive===false?'🔴 已陣亡':'🟢 存活';acts.classList.toggle('hide',me.alive===false||endedGame);dead.classList.toggle('hide',me.alive!==false||endedGame);ended.classList.toggle('hide',!endedGame)}
-</script></body></html>
+import{initializeApp}from"https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import{getAuth,signInAnonymously,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import{getFirestore,doc,setDoc,getDoc,updateDoc,onSnapshot,collection,deleteDoc,addDoc,query,orderBy,limit,getDocs}from"https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+const cfg={apiKey:"AIzaSyACA7Igl-kD2-Pw6aUAY9mk9LW0ECPIwY0",authDomain:"ats-c0912.firebaseapp.com",projectId:"ats-c0912",storageBucket:"ats-c0912.firebasestorage.app",messagingSenderId:"293926592919",appId:"1:293926592919:web:f8ef3f5996c716e799a4d2"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id);
+
+let uid="",code="",isHost=false,me={},room={},timerInt=null;
+let roomUnsub=null,playersUnsub=null,logsUnsub=null;
+let counts={ra:0,rd:0,ba:0,bd:0};
+
+const show=id=>{
+  document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));
+  $(id).classList.add("on");
+  scrollTo(0,0);
+};
+
+const note=m=>{
+  $("toast").textContent=m;
+  $("toast").classList.add("on");
+  setTimeout(()=>$("toast").classList.remove("on"),2200);
+};
+
+const fmt=s=>{
+  s=Math.max(0,Math.floor(Number(s)||0));
+  return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+};
+
+const secondsLeft=()=>{
+  if(!room.duration)return 0;
+  if(room.status==="running"){
+    return Math.max(0,Number(room.remaining||room.duration)-Math.floor((Date.now()-Number(room.started||Date.now()))/1000));
+  }
+  return Math.max(0,Number(room.remaining ?? room.duration));
+};
+
+const addLog=async text=>{
+  if(!code)return;
+  await addDoc(collection(db,"rooms",code,"logs"),{text,at:Date.now()});
+};
+
+const guarded=async(label,fn)=>{
+  try{
+    if(!uid)return note("Firebase 尚未連線");
+    await fn();
+  }catch(e){
+    console.error(label,e);
+    note(label+"失敗："+(e?.code||e?.message||"未知錯誤"));
+  }
+};
+
+const stopWatchers=()=>{
+  roomUnsub?.();playersUnsub?.();logsUnsub?.();
+  roomUnsub=playersUnsub=logsUnsub=null;
+  clearInterval(timerInt);
+};
+
+signInAnonymously(auth).catch(e=>{
+  console.error(e);
+  $("login").textContent="Firebase 連線失敗";
+});
+
+onAuthStateChanged(auth,u=>{
+  if(u){
+    uid=u.uid;
+    $("login").textContent="Firebase 已連線，可開始使用";
+  }
+});
+
+$("homeBtn").onclick=()=>{stopWatchers();show("home")};
+$("goCreate").onclick=()=>show("create");
+$("goJoin").onclick=()=>show("join");
+
+$("createBtn").onclick=()=>guarded("建立房間",async()=>{
+  const name=$("hostName").value.trim();
+  if(!name)return note("請輸入房主名稱");
+
+  let newCode="",exists=true,tries=0;
+  while(exists&&tries<10){
+    newCode=String(Math.floor(100000+Math.random()*900000));
+    exists=(await getDoc(doc(db,"rooms",newCode))).exists();
+    tries++;
+  }
+  if(exists)return note("房號產生失敗，請重試");
+
+  code=newCode;
+  isHost=true;
+  const duration=Number($("mins").value)*60;
+  me={name,team:$("hostTeam").value,alive:true,isHost:true,joinedAt:Date.now()};
+
+  await setDoc(doc(db,"rooms",code),{
+    title:$("gameName").value.trim()||"今晚對戰",
+    status:"waiting",
+    duration,
+    remaining:duration,
+    started:null,
+    hostUid:uid,
+    createdAt:Date.now()
+  });
+  await setDoc(doc(db,"rooms",code,"players",uid),me);
+  await addLog(name+" 建立房間");
+  watchRoom();
+});
+
+$("joinBtn").onclick=()=>guarded("加入房間",async()=>{
+  const c=$("joinCode").value.trim();
+  const name=$("joinName").value.trim();
+  if(!/^\d{6}$/.test(c))return note("請輸入六位數房號");
+  if(!name)return note("請輸入玩家名稱");
+
+  const snap=await getDoc(doc(db,"rooms",c));
+  if(!snap.exists())return note("找不到房間");
+  if(snap.data().status==="finished")return note("這場遊戲已結束");
+
+  code=c;
+  isHost=snap.data().hostUid===uid;
+  me={name,team:$("joinTeam").value,alive:true,isHost,joinedAt:Date.now()};
+  await setDoc(doc(db,"rooms",code,"players",uid),me);
+  await addLog(name+" 加入 "+me.team);
+  watchRoom();
+});
+
+function watchRoom(){
+  stopWatchers();
+  $("roomCode").textContent=code;
+  $("hostBox").classList.toggle("hide",!isHost);
+  show("lobby");
+
+  roomUnsub=onSnapshot(doc(db,"rooms",code),snap=>{
+    if(!snap.exists()){
+      note("房間已關閉");
+      stopWatchers();
+      code="";
+      show("home");
+      return;
+    }
+
+    room=snap.data();
+    isHost=room.hostUid===uid;
+    $("hostBox").classList.toggle("hide",!isHost);
+    $("title").textContent=room.title||"未命名房間";
+    $("status").textContent=
+      room.status==="waiting"?"等待中":
+      room.status==="running"?"進行中":
+      room.status==="paused"?"已暫停":"已結束";
+
+    $("startBtn").classList.toggle("hide",room.status!=="waiting");
+    $("runBox").classList.toggle("hide",!["running","paused"].includes(room.status));
+    $("pauseBtn").classList.toggle("hide",room.status!=="running");
+    $("resumeBtn").classList.toggle("hide",room.status!=="paused");
+    $("restartBtn").classList.toggle("hide",room.status!=="finished");
+
+    if(["running","paused","finished"].includes(room.status))enterGame();
+  },e=>{
+    console.error(e);
+    note("房間同步失敗");
+  });
+
+  playersUnsub=onSnapshot(collection(db,"rooms",code,"players"),snap=>{
+    counts={ra:0,rd:0,ba:0,bd:0};
+    $("players").innerHTML="";
+    $("total").textContent=snap.size+" 人";
+
+    snap.forEach(d=>{
+      const p=d.data();
+      const alive=p.alive!==false;
+      if(p.team==="紅隊") alive?counts.ra++:counts.rd++;
+      if(p.team==="藍隊") alive?counts.ba++:counts.bd++;
+
+      const item=document.createElement("div");
+      item.className="player"+(d.id===uid?" me":"");
+      item.innerHTML=`<b>${escapeHtml(p.name)}${p.isHost?"（房主）":""}</b><div class="muted">${escapeHtml(p.team)}｜${alive?"🟢 存活":"🔴 陣亡"}</div>`;
+      $("players").appendChild(item);
+
+      if(d.id===uid){
+        me=p;
+        syncMe();
+      }
+    });
+
+    updateCounts();
+  },e=>{
+    console.error(e);
+    note("玩家同步失敗");
+  });
+
+  logsUnsub=onSnapshot(
+    query(collection(db,"rooms",code,"logs"),orderBy("at","desc"),limit(30)),
+    snap=>{
+      $("logs").innerHTML="";
+      snap.forEach(d=>{
+        const x=document.createElement("div");
+        const data=d.data();
+        x.textContent=new Date(data.at).toLocaleTimeString("zh-TW",{hour12:false})+"　"+data.text;
+        $("logs").appendChild(x);
+      });
+    },
+    e=>console.error(e)
+  );
+}
+
+function updateCounts(){
+  $("ra").textContent=$("gra").textContent=counts.ra;
+  $("rd").textContent=$("grd").textContent=counts.rd;
+  $("ba").textContent=$("gba").textContent=counts.ba;
+  $("bd").textContent=$("gbd").textContent=counts.bd;
+  updateResult();
+}
+
+function escapeHtml(value){
+  return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+}
+
+$("startBtn").onclick=()=>guarded("開始遊戲",async()=>{
+  if(!isHost)return note("只有房主可以開始");
+  await updateDoc(doc(db,"rooms",code),{
+    status:"running",
+    started:Date.now(),
+    remaining:Number(room.duration)
+  });
+  await addLog("遊戲開始");
+});
+
+$("pauseBtn").onclick=()=>guarded("暫停遊戲",async()=>{
+  if(!isHost)return note("只有房主可以暫停");
+  await updateDoc(doc(db,"rooms",code),{
+    status:"paused",
+    remaining:secondsLeft(),
+    started:null
+  });
+  await addLog("遊戲暫停");
+});
+
+$("resumeBtn").onclick=()=>guarded("繼續遊戲",async()=>{
+  if(!isHost)return note("只有房主可以繼續");
+  await updateDoc(doc(db,"rooms",code),{
+    status:"running",
+    started:Date.now()
+  });
+  await addLog("遊戲繼續");
+});
+
+$("finishBtn").onclick=()=>guarded("結束遊戲",async()=>{
+  if(!isHost)return note("只有房主可以結束");
+  await updateDoc(doc(db,"rooms",code),{
+    status:"finished",
+    remaining:secondsLeft(),
+    started:null
+  });
+  await addLog("遊戲結束");
+});
+
+$("restartBtn").onclick=()=>guarded("同場再開",async()=>{
+  if(!isHost)return note("只有房主可以再開");
+  const snap=await getDocs(collection(db,"rooms",code,"players"));
+  for(const p of snap.docs){
+    await updateDoc(p.ref,{alive:true});
+  }
+  await updateDoc(doc(db,"rooms",code),{
+    status:"waiting",
+    remaining:Number(room.duration),
+    started:null
+  });
+  await addLog("同場再開");
+  show("lobby");
+});
+
+$("closeBtn").onclick=()=>guarded("關閉房間",async()=>{
+  if(!isHost)return note("只有房主可以關閉");
+  if(!confirm("確定關閉房間？"))return;
+  await deleteDoc(doc(db,"rooms",code));
+});
+
+$("hitBtn").onclick=()=>guarded("陣亡回報",async()=>{
+  if(me.alive===false)return note("你已經陣亡");
+  if(room.status!=="running"&&room.status!=="paused")return note("遊戲尚未開始");
+  if(!confirm("確定回報陣亡？"))return;
+  await updateDoc(doc(db,"rooms",code,"players",uid),{alive:false});
+  await addLog(me.name+" 陣亡");
+});
+
+$("backLobbyBtn").onclick=()=>show("lobby");
+
+function enterGame(){
+  $("gameTitle").textContent=room.title||"";
+  $("teamText").textContent=me.team||"";
+  $("playerName").textContent=me.name||"";
+  show("game");
+  clearInterval(timerInt);
+  tick();
+  timerInt=setInterval(tick,1000);
+  syncMe();
+}
+
+function tick(){
+  const left=secondsLeft();
+  $("timer").textContent=fmt(left);
+  if(isHost&&room.status==="running"&&left<=0){
+    $("finishBtn").click();
+  }
+}
+
+function syncMe(){
+  const dead=me.alive===false;
+  const ended=room.status==="finished";
+  $("aliveState").textContent=dead?"🔴 已陣亡":"🟢 存活";
+  $("aliveActions").classList.toggle("hide",dead||ended);
+  $("deadBox").classList.toggle("hide",!dead||ended);
+  $("endedBox").classList.toggle("hide",!ended);
+  updateResult();
+}
+
+function updateResult(){
+  if(room.status!=="finished")return;
+  let text="平手";
+  if(counts.ra>counts.ba)text="紅隊勝利";
+  if(counts.ba>counts.ra)text="藍隊勝利";
+  $("result").textContent=`${text}｜紅隊存活 ${counts.ra} 人，藍隊存活 ${counts.ba} 人`;
+}
+</script>
+</body>
+</html>
