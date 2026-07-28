@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081009">
-<title>ATS v0.6 玩家自治版</title>
+<title>ATS v0.6.1 玩家自治版</title>
 <style>
 :root{--b:#081009;--p:#111b14;--p2:#17231a;--t:#f5f7f5;--m:#9eaaa0;--a:#8caf82;--d:#d95d5d;--w:#d6a84f;--bl:#587fc8;--l:#2b3b2e}
 *{box-sizing:border-box}
@@ -45,6 +45,8 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
 .toast{position:fixed;z-index:99;bottom:25px;left:50%;transform:translateX(-50%);background:white;color:#111;padding:12px 16px;border-radius:12px;display:none;max-width:90%;text-align:center}
 .toast.on{display:block}
 .result{text-align:center;font-size:28px;font-weight:900;color:var(--a)}
+.sos-alert{position:fixed;z-index:100;top:18px;left:50%;transform:translateX(-50%);background:#c63f3f;color:white;padding:15px 18px;border-radius:14px;font-weight:900;display:none;max-width:92%;text-align:center;box-shadow:0 8px 30px #0008}
+.sos-alert.on{display:block}
 @media(max-width:380px){.timer{font-size:52px}.code{font-size:42px}.stats{grid-template-columns:1fr}}
 </style>
 </head>
@@ -55,7 +57,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
       <div class="logo">ATS</div>
       <div>
         <h2 style="margin:0">真人 CS 戰術系統</h2>
-        <div class="sub">Alpha v0.6 玩家自治版</div>
+        <div class="sub">Alpha v0.6.1 玩家自治版</div>
       </div>
     </div>
     <button class="btn secondary small" id="homeBtn">首頁</button>
@@ -63,7 +65,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
 
   <section id="home" class="screen on">
     <div class="card">
-      <b style="color:var(--a)">ATS ALPHA v0.6</b>
+      <b style="color:var(--a)">ATS ALPHA v0.6.1</b>
       <h1>簡易實戰版</h1>
       <p class="muted">建立房間、加入對戰、紅藍隊統計、倒數計時、玩家自行回報陣亡。</p>
     </div>
@@ -141,13 +143,21 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
     </div>
 
     <div id="hostBox" class="hide">
+      <div class="card">
+        <h3>房主設定</h3>
+        <div class="field">
+          <label>房間名稱</label>
+          <input id="renameInput" maxlength="30" placeholder="輸入新的房間名稱">
+        </div>
+        <button id="renameBtn" class="btn secondary">修改房名</button>
+      </div>
       <button id="startBtn" class="btn primary">開始遊戲</button>
       <div id="runBox" class="hide">
         <button id="pauseBtn" class="btn warn">暫停</button>
         <button id="resumeBtn" class="btn blue hide">繼續</button>
         <button id="finishBtn" class="btn danger">結束遊戲</button>
       </div>
-      <button id="restartBtn" class="btn primary hide">同場再開</button>
+      <button id="restartBtn" class="btn primary hide">重新開始</button>
       <button id="closeBtn" class="btn secondary">關閉房間</button>
     </div>
 
@@ -172,6 +182,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
     </div>
 
     <div id="aliveActions" class="actions">
+      <button class="act" id="sosBtn"><span>🆘</span>SOS 提醒隊友</button>
       <button class="act" id="hitBtn"><span>💀</span>我已陣亡</button>
     </div>
 
@@ -189,6 +200,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
 </main>
 
 <div id="toast" class="toast"></div>
+<div id="sosAlert" class="sos-alert"></div>
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
@@ -202,6 +214,7 @@ const $=id=>document.getElementById(id);
 let uid="",code="",isHost=false,me={},room={},timerInt=null;
 let roomUnsub=null,playersUnsub=null,logsUnsub=null;
 let counts={ra:0,rd:0,ba:0,bd:0};
+let lastSosSeen=0,lastSosSent=0;
 
 const show=id=>{
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));
@@ -333,6 +346,19 @@ function watchRoom(){
     isHost=room.hostUid===uid;
     $("hostBox").classList.toggle("hide",!isHost);
     $("title").textContent=room.title||"未命名房間";
+    if(isHost && document.activeElement!==$("renameInput")){
+      $("renameInput").value=room.title||"";
+    }
+
+    if(room.sos && Number(room.sos.at)>lastSosSeen){
+      lastSosSeen=Number(room.sos.at);
+      if(room.sos.uid!==uid && room.sos.team===me.team && Date.now()-Number(room.sos.at)<15000){
+        $("sosAlert").textContent="🆘 "+room.sos.name+" 發出 SOS！";
+        $("sosAlert").classList.add("on");
+        setTimeout(()=>$("sosAlert").classList.remove("on"),8000);
+      }
+    }
+
     $("status").textContent=
       room.status==="waiting"?"等待中":
       room.status==="running"?"進行中":
@@ -342,7 +368,7 @@ function watchRoom(){
     $("runBox").classList.toggle("hide",!["running","paused"].includes(room.status));
     $("pauseBtn").classList.toggle("hide",room.status!=="running");
     $("resumeBtn").classList.toggle("hide",room.status!=="paused");
-    $("restartBtn").classList.toggle("hide",room.status!=="finished");
+    $("restartBtn").classList.toggle("hide",room.status==="waiting");
 
     if(["running","paused","finished"].includes(room.status))enterGame();
   },e=>{
@@ -405,6 +431,15 @@ function escapeHtml(value){
   return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
 }
 
+$("renameBtn").onclick=()=>guarded("修改房名",async()=>{
+  if(!isHost)return note("只有房主可以修改房名");
+  const newName=$("renameInput").value.trim();
+  if(!newName)return note("請輸入房間名稱");
+  await updateDoc(doc(db,"rooms",code),{title:newName});
+  await addLog("房主將房名修改為「"+newName+"」");
+  note("房名已修改");
+});
+
 $("startBtn").onclick=()=>guarded("開始遊戲",async()=>{
   if(!isHost)return note("只有房主可以開始");
   await updateDoc(doc(db,"rooms",code),{
@@ -444,19 +479,19 @@ $("finishBtn").onclick=()=>guarded("結束遊戲",async()=>{
   await addLog("遊戲結束");
 });
 
-$("restartBtn").onclick=()=>guarded("同場再開",async()=>{
-  if(!isHost)return note("只有房主可以再開");
+$("restartBtn").onclick=()=>guarded("重新開始",async()=>{
+  if(!isHost)return note("只有房主可以重新開始");
   const snap=await getDocs(collection(db,"rooms",code,"players"));
   for(const p of snap.docs){
     await updateDoc(p.ref,{alive:true});
   }
   await updateDoc(doc(db,"rooms",code),{
-    status:"waiting",
+    status:"running",
     remaining:Number(room.duration),
-    started:null
+    started:Date.now()
   });
-  await addLog("同場再開");
-  show("lobby");
+  await addLog("房主重新開始遊戲");
+  note("遊戲已重新開始");
 });
 
 $("closeBtn").onclick=()=>guarded("關閉房間",async()=>{
@@ -465,12 +500,26 @@ $("closeBtn").onclick=()=>guarded("關閉房間",async()=>{
   await deleteDoc(doc(db,"rooms",code));
 });
 
+$("sosBtn").onclick=()=>guarded("SOS",async()=>{
+  if(me.alive===false)return note("陣亡後不能發送 SOS");
+  if(room.status!=="running"&&room.status!=="paused")return note("遊戲尚未開始");
+  const now=Date.now();
+  if(now-lastSosSent<10000)return note("SOS 冷卻中，請稍後再按");
+  lastSosSent=now;
+  await updateDoc(doc(db,"rooms",code),{
+    sos:{uid,name:me.name,team:me.team,at:now}
+  });
+  note("SOS 已提醒隊友");
+});
+
 $("hitBtn").onclick=()=>guarded("陣亡回報",async()=>{
   if(me.alive===false)return note("你已經陣亡");
   if(room.status!=="running"&&room.status!=="paused")return note("遊戲尚未開始");
-  if(!confirm("確定回報陣亡？"))return;
+  $("hitBtn").disabled=true;
   await updateDoc(doc(db,"rooms",code,"players",uid),{alive:false});
   await addLog(me.name+" 陣亡");
+  note("已回報陣亡");
+  setTimeout(()=>$("hitBtn").disabled=false,1000);
 });
 
 $("backLobbyBtn").onclick=()=>show("lobby");
