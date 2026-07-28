@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081009">
-<title>ATS v0.6.1 玩家自治版</title>
+<title>ATS v0.6.2 玩家自治版</title>
 <style>
 :root{--b:#081009;--p:#111b14;--p2:#17231a;--t:#f5f7f5;--m:#9eaaa0;--a:#8caf82;--d:#d95d5d;--w:#d6a84f;--bl:#587fc8;--l:#2b3b2e}
 *{box-sizing:border-box}
@@ -57,7 +57,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
       <div class="logo">ATS</div>
       <div>
         <h2 style="margin:0">真人 CS 戰術系統</h2>
-        <div class="sub">Alpha v0.6.1 玩家自治版</div>
+        <div class="sub">Alpha v0.6.2 玩家自治版</div>
       </div>
     </div>
     <button class="btn secondary small" id="homeBtn">首頁</button>
@@ -65,7 +65,7 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
 
   <section id="home" class="screen on">
     <div class="card">
-      <b style="color:var(--a)">ATS ALPHA v0.6.1</b>
+      <b style="color:var(--a)">ATS ALPHA v0.6.2</b>
       <h1>簡易實戰版</h1>
       <p class="muted">建立房間、加入對戰、紅藍隊統計、倒數計時、玩家自行回報陣亡。</p>
     </div>
@@ -155,9 +155,10 @@ main{max-width:640px;margin:auto;padding:18px;padding-bottom:40px}
       <div id="runBox" class="hide">
         <button id="pauseBtn" class="btn warn">暫停</button>
         <button id="resumeBtn" class="btn blue hide">繼續</button>
+        <button id="rallyBtn" class="btn secondary">📢 一鍵集合</button>
         <button id="finishBtn" class="btn danger">結束遊戲</button>
       </div>
-      <button id="restartBtn" class="btn primary hide">重新開始</button>
+      <button id="restartBtn" class="btn primary hide">🔄 重新開始</button>
       <button id="closeBtn" class="btn secondary">關閉房間</button>
     </div>
 
@@ -359,6 +360,15 @@ function watchRoom(){
       }
     }
 
+    if(room.rally && Number(room.rally.at)>Number(window._lastRallySeen||0)){
+      window._lastRallySeen=Number(room.rally.at);
+      if(room.rally.uid!==uid && Date.now()-Number(room.rally.at)<15000){
+        $("sosAlert").textContent="📢 房主呼叫集合！";
+        $("sosAlert").classList.add("on");
+        setTimeout(()=>$("sosAlert").classList.remove("on"),8000);
+      }
+    }
+
     $("status").textContent=
       room.status==="waiting"?"等待中":
       room.status==="running"?"進行中":
@@ -469,6 +479,16 @@ $("resumeBtn").onclick=()=>guarded("繼續遊戲",async()=>{
   await addLog("遊戲繼續");
 });
 
+$("rallyBtn").onclick=()=>guarded("一鍵集合",async()=>{
+  if(!isHost)return note("只有房主可以發起集合");
+  const now=Date.now();
+  await updateDoc(doc(db,"rooms",code),{
+    rally:{uid,name:me.name,at:now}
+  });
+  await addLog("房主發起集合");
+  note("已通知全體玩家集合");
+});
+
 $("finishBtn").onclick=()=>guarded("結束遊戲",async()=>{
   if(!isHost)return note("只有房主可以結束");
   await updateDoc(doc(db,"rooms",code),{
@@ -488,7 +508,9 @@ $("restartBtn").onclick=()=>guarded("重新開始",async()=>{
   await updateDoc(doc(db,"rooms",code),{
     status:"running",
     remaining:Number(room.duration),
-    started:Date.now()
+    started:Date.now(),
+    sos:null,
+    rally:null
   });
   await addLog("房主重新開始遊戲");
   note("遊戲已重新開始");
